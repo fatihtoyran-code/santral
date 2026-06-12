@@ -25,7 +25,9 @@ import {
   ArrowDownRight,
   SlidersHorizontal,
   X,
-  FileText
+  FileText,
+  Calendar,
+  ChevronDown
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -90,6 +92,8 @@ export default function App() {
 
   // Modern panel sub-mode: live or historical archive
   const [modernSubMode, setModernSubMode] = useState<"live" | "archive">("live");
+  const [showDatePickerPopup, setShowDatePickerPopup] = useState<boolean>(false);
+  const [showGuide, setShowGuide] = useState<boolean>(true);
 
   // Legacy Dash States
   const [legacyDate, setLegacyDate] = useState<string>(new Date().toISOString().substring(0, 10));
@@ -731,62 +735,180 @@ export default function App() {
 
             {/* If archive mode is selected, render the date selectors elegantly */}
             {modernSubMode === "archive" && (
-              <div className="flex flex-wrap items-center gap-4 bg-slate-900/40 p-2 text-xs rounded-xl border border-slate-800/80 w-full md:w-auto shadow-md">
-                {/* Date Picker */}
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Tarih</span>
-                  <input
-                    type="date"
-                    value={legacyDate}
-                    onChange={(e) => setLegacyDate(e.target.value)}
-                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 font-mono"
-                  />
-                </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowDatePickerPopup(!showDatePickerPopup)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-slate-900 to-slate-900/80 border border-slate-800 hover:border-indigo-500/80 transition px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white cursor-pointer shadow-md select-none"
+                >
+                  <Calendar className="h-4 w-4 text-indigo-400" />
+                  <span>Arşiv Tarih Filtresi:</span>
+                  <span className="font-mono text-indigo-300 font-bold bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-900/40">
+                    {legacyDate}
+                  </span>
+                  <span className="text-slate-500 text-[10px] hidden sm:inline">
+                    ({legacyStart} - {legacyEnd})
+                  </span>
+                  {legacyTesis !== "Hepsi" && (
+                    <span className="bg-slate-950 px-2 py-0.5 rounded text-[10px] text-slate-400">
+                      Saha: {legacyTesis}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${showDatePickerPopup ? "rotate-180 text-white" : ""}`} />
+                </button>
 
-                {/* Start Hour */}
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Başlangıç</span>
-                  <select
-                    value={legacyStart}
-                    onChange={(e) => setLegacyStart(e.target.value)}
-                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-105 outline-none focus:border-indigo-500 font-mono"
-                  >
-                    {zamanOpsiyon.map(op => (
-                      <option key={`modstart-${op}`} value={op}>{op}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Popup Window / Dropdown Menu */}
+                {showDatePickerPopup && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-slate-950/40 md:bg-transparent" 
+                      onClick={() => setShowDatePickerPopup(false)} 
+                    />
+                    
+                    <div className="absolute right-0 md:left-0 mt-2 w-[320px] sm:w-[350px] z-50 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Sliders className="h-3.5 w-3.5 text-indigo-400" />
+                          Tarih ve Saha Filtreleri
+                        </span>
+                        <button 
+                          onClick={() => setShowDatePickerPopup(false)}
+                          className="text-slate-400 hover:text-white p-1 hover:bg-slate-800/80 rounded-lg transition"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
 
-                {/* End Hour */}
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Bitiş</span>
-                  <select
-                    value={legacyEnd}
-                    onChange={(e) => setLegacyEnd(e.target.value)}
-                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-105 outline-none focus:border-indigo-500 font-mono"
-                  >
-                    {zamanOpsiyon.map(op => (
-                      <option key={`modend-${op}`} value={op}>{op}</option>
-                    ))}
-                  </select>
-                </div>
+                      <div className="space-y-4">
+                        {/* Date Picker */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">📅 Rapor Tarihi</label>
+                          <input
+                            type="date"
+                            value={legacyDate}
+                            onChange={(e) => setLegacyDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-805 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500 font-mono focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
 
-                {/* Tesis */}
-                <div className="flex flex-col gap-0.5 min-w-[120px]">
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Saha Seçimi</span>
-                  <select
-                    value={legacyTesis}
-                    onChange={(e) => setLegacyTesis(e.target.value)}
-                    className="bg-slate-950 border border-slate-855 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 font-sans"
-                  >
-                    <option value="Hepsi font-bold">Hepsi</option>
-                    {facilities.map(f => (
-                      <option key={`modTesla-${f.id}`} value={f.id}>{f.id} - {f.name.split(' ')[1] || 'Saha'}</option>
-                    ))}
-                  </select>
-                </div>
+                        {/* Starting/Ending Hour */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">🕒 Başlangıç</label>
+                            <select
+                              value={legacyStart}
+                              onChange={(e) => setLegacyStart(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-805 rounded-lg px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-indigo-500 font-mono cursor-pointer"
+                            >
+                              {zamanOpsiyon.map(op => (
+                                <option key={`modstart-${op}`} value={op}>{op}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">🕒 Bitiş</label>
+                            <select
+                              value={legacyEnd}
+                              onChange={(e) => setLegacyEnd(e.target.value)}
+                              className="w-full bg-slate-900/60 border border-slate-805 rounded-lg px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-indigo-500 font-mono cursor-pointer"
+                            >
+                              {zamanOpsiyon.map(op => (
+                                <option key={`modend-${op}`} value={op}>{op}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Tesis */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">🏢 Saha Seçimi</label>
+                          <select
+                            value={legacyTesis}
+                            onChange={(e) => setLegacyTesis(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-805 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500 font-sans cursor-pointer"
+                          >
+                            <option value="Hepsi">Hepsi</option>
+                            {facilities.map(f => (
+                              <option key={`modTesla-${f.id}`} value={f.id}>{f.id} - {f.name.split(' ')[1] || 'Saha'}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          onClick={() => setShowDatePickerPopup(false)}
+                          className="w-full mt-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-600 hover:to-indigo-400 active:scale-[0.98] transition text-white text-xs font-bold py-2.5 rounded-lg shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          Seçimi Tamamla
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
+          </section>
+
+          {/* USER INTERACTION AND TERMINOLOGY MINI GUIDE */}
+          <section className="px-4 md:px-6 pt-2 pb-1 bg-slate-950">
+            <div className="bg-slate-900/40 border border-slate-900 rounded-xl overflow-hidden shadow-lg transition duration-250">
+              <button 
+                onClick={() => setShowGuide(!showGuide)}
+                className="w-full flex justify-between items-center px-4 py-3 bg-slate-900/60 text-xs font-bold text-slate-300 hover:text-white cursor-pointer select-none transition"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                  <span>🔋 Enerji Terimleri Kılavuzu & Veri Okuma Yardımı</span>
+                  <span className="text-[10px] font-normal text-slate-400 hidden sm:inline">(Hangi sayı ne anlama geliyor görmek için tıklayınız)</span>
+                </div>
+                <div className="text-indigo-400 font-mono text-[10px] bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                  {showGuide ? "Kılavuzu Kapat ▲" : "Kılavuzu Aç ▼"}
+                </div>
+              </button>
+              
+              {showGuide && (
+                <div className="p-4 bg-slate-950/40 border-t border-slate-900 text-xs text-slate-450 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-900/80">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-amber-400 font-bold">
+                      <Zap className="h-3.5 w-3.5" />
+                      <span>kVA (Anlık Güç Akışı)</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-slate-450">
+                      Tesislerimizin o an çektiği veya ürettiği anlık görünür güç akışıdır. <strong className="text-slate-200 font-semibold">Trafo yük kapasitesini</strong> temsil eder. Limiti aşmaması için anlık izlenir.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-900/80">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-blue-400 font-bold">
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                      <span>Del - Şebekeden Çekilen (Satın Alma)</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-slate-450">
+                      Sistemimizin elektrik şebekesinden satın aldığı kümülatif enerjidir (kWh). <strong className="text-slate-200 font-semibold">Tüketim</strong> faturanızı doğrudan belirleyen miktardır.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-900/80">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-emerald-400 font-bold">
+                      <ArrowDownRight className="h-3.5 w-3.5" />
+                      <span>Rec - Şebekeye Basılan (Üretim)</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-slate-450">
+                      Güneş panellerimizin üreterek dış şebekeye <strong className="text-slate-200 font-semibold">sattığı</strong> toplam temiz enerjidir (kWh). Kar ve üretim performansınızı simgeler.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-900/80">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-indigo-400 font-bold">
+                      <Info className="h-3.5 w-3.5" />
+                      <span>Net Denge & Saha Türleri</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-slate-450">
+                      <strong className="text-slate-200 font-semibold">Net Enerji:</strong> Del (Tüketim) ile Rec (Üretim) farkıdır. <em className="text-emerald-400 font-semibold italic">Eksi (-) değerler kar ettiğimizi</em> belirtir. <strong className="text-slate-300">K, G, T</strong> harfleri üretici güneş santrallerini, <strong className="text-slate-300">M</strong> harfleri ise tüketici fabrikaları belirtir.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* CORE STATS BOARD */}
