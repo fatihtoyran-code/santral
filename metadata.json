@@ -1,0 +1,6 @@
+{
+  "name": "Enerji Telemetri Takip Paneli",
+  "description": "Güneş enerjisi tesisleri ve grid telemetri istasyonlarının kVA ve Del/Rec tüketim değerlerini anlık izleme, grafikleme ve kontrol paneli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
