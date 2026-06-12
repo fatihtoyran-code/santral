@@ -86,7 +86,10 @@ export default function App() {
   const [logTypeFilter, setLogTypeFilter] = useState<string>("all");
 
   // Tab states: modern or legacy (Python Dash match)
-  const [activeTab, setActiveTab] = useState<"modern" | "legacy">("legacy");
+  const [activeTab, setActiveTab ] = useState<"modern" | "legacy">("modern");
+
+  // Modern panel sub-mode: live or historical archive
+  const [modernSubMode, setModernSubMode] = useState<"live" | "archive">("live");
 
   // Legacy Dash States
   const [legacyDate, setLegacyDate] = useState<string>(new Date().toISOString().substring(0, 10));
@@ -136,15 +139,13 @@ export default function App() {
     return ops;
   }, []);
 
-  // Sync effect for legacy tab
+  // Sync effect for date-based analytics
   useEffect(() => {
-    if (activeTab === "legacy") {
-      const dateStringRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (dateStringRegex.test(legacyDate)) {
-        fetchLegacyData();
-      }
+    const dateStringRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateStringRegex.test(legacyDate)) {
+      fetchLegacyData();
     }
-  }, [legacyDate, legacyStart, legacyEnd, legacyTesis, activeTab]);
+  }, [legacyDate, legacyStart, legacyEnd, legacyTesis]);
 
   // Fetch critical live telemetry
   const fetchLiveData = async () => {
@@ -701,92 +702,260 @@ export default function App() {
         </div>
       ) : (
         <>
+          {/* MODERN PANEL SUB-MODE CONTROLLER */}
+          <section className="px-4 md:px-6 pt-4 pb-2 bg-slate-950 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-900/40">
+            <div className="flex bg-slate-900/60 p-1 rounded-xl border border-slate-800 gap-1 shadow-inner select-none">
+              <button
+                onClick={() => setModernSubMode("live")}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition duration-150 flex items-center gap-2 cursor-pointer ${
+                  modernSubMode === "live"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-slate-950 shadow-md font-extrabold"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                🟢 Canlı Gözlem (Anlık)
+              </button>
+              <button
+                onClick={() => setModernSubMode("archive")}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition duration-150 flex items-center gap-2 cursor-pointer ${
+                  modernSubMode === "archive"
+                    ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md font-extrabold"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Sliders className="h-3.5 w-3.5" />
+                📅 Arşiv (Tarih Seçimli)
+              </button>
+            </div>
+
+            {/* If archive mode is selected, render the date selectors elegantly */}
+            {modernSubMode === "archive" && (
+              <div className="flex flex-wrap items-center gap-4 bg-slate-900/40 p-2 text-xs rounded-xl border border-slate-800/80 w-full md:w-auto shadow-md">
+                {/* Date Picker */}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Tarih</span>
+                  <input
+                    type="date"
+                    value={legacyDate}
+                    onChange={(e) => setLegacyDate(e.target.value)}
+                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+
+                {/* Start Hour */}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Başlangıç</span>
+                  <select
+                    value={legacyStart}
+                    onChange={(e) => setLegacyStart(e.target.value)}
+                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-105 outline-none focus:border-indigo-500 font-mono"
+                  >
+                    {zamanOpsiyon.map(op => (
+                      <option key={`modstart-${op}`} value={op}>{op}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* End Hour */}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Bitiş</span>
+                  <select
+                    value={legacyEnd}
+                    onChange={(e) => setLegacyEnd(e.target.value)}
+                    className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-slate-105 outline-none focus:border-indigo-500 font-mono"
+                  >
+                    {zamanOpsiyon.map(op => (
+                      <option key={`modend-${op}`} value={op}>{op}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tesis */}
+                <div className="flex flex-col gap-0.5 min-w-[120px]">
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">Saha Seçimi</span>
+                  <select
+                    value={legacyTesis}
+                    onChange={(e) => setLegacyTesis(e.target.value)}
+                    className="bg-slate-950 border border-slate-855 rounded px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500 font-sans"
+                  >
+                    <option value="Hepsi font-bold">Hepsi</option>
+                    {facilities.map(f => (
+                      <option key={`modTesla-${f.id}`} value={f.id}>{f.id} - {f.name.split(' ')[1] || 'Saha'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </section>
+
           {/* CORE STATS BOARD */}
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 p-4 md:p-6 bg-slate-950">
         
-        {/* STAT 1: ACTIVE INSTANTANEOUS KVA */}
+        {/* STAT 1: ACTIVE INSTANTANEOUS KVA OR HISTORIC MAX */}
         <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-amber-500/40 transition duration-300">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-medium text-slate-400">Anlık kVA Üretim/Yük</span>
-            <span className="p-1 px-1.5 text-[10px] font-mono rounded bg-amber-500/10 text-amber-400 border border-amber-500/25">Anlık Gözlem</span>
-          </div>
-          <div className="mt-2.5">
-            <div className="text-3xl font-extrabold tracking-tight text-amber-400 font-mono">
-              {stats.totalKva.toLocaleString("tr-TR")} <span className="text-sm font-semibold">kVA</span>
-            </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
-              <Zap className="h-3 w-3 text-amber-400" />
-              Sistem anlık deşarj/güç üretimi
-            </div>
-          </div>
-        </div>
-
-        {/* STAT 2: TOTAL DELIVERED GRID (Del) */}
-        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-blue-500/40 transition duration-300">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-medium text-slate-400">Sistem Şebeke Çekimi (Del)</span>
-            <span className="p-1 px-1.5 text-[10px] font-mono rounded bg-blue-500/10 text-blue-400 border border-blue-500/25">Aktif Tüketim</span>
-          </div>
-          <div className="mt-2.5">
-            <div className="text-3xl font-extrabold tracking-tight text-blue-400 font-mono">
-              {stats.totalDel ? stats.totalDel.toLocaleString("tr-TR") : "0"} <span className="text-sm font-semibold">kWh</span>
-            </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
-              <ArrowUpRight className="h-3 w-3 text-blue-400" />
-              Şebekeden çekilen kümülatif enerji
-            </div>
-          </div>
-        </div>
-
-        {/* STAT 3: TOTAL SOLAR RECEIVED (Rec) */}
-        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-emerald-500/40 transition duration-300">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-medium text-slate-400">Sisteme Basılan (Rec)</span>
-            <span className="p-1 px-1.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Aktif Üretim</span>
-          </div>
-          <div className="mt-2.5">
-            <div className="text-3xl font-extrabold tracking-tight text-emerald-400 font-mono">
-              {stats.totalRec ? stats.totalRec.toLocaleString("tr-TR") : "0"} <span className="text-sm font-semibold">kWh</span>
-            </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
-              <ArrowDownRight className="h-3 w-3 text-emerald-400" />
-              Şebekeye basılan kümülatif üretim
-            </div>
-          </div>
-        </div>
-
-        {/* STAT 4: TOTAL COLECTIVE NET */}
-        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-indigo-500/40 transition duration-300">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-medium text-slate-400">Net Enerji Dengesi</span>
-            <span className={`p-1 px-1.5 text-[10px] font-mono rounded ${stats.totalNet < 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-              {stats.totalNet < 0 ? "Enerji İhracatı" : "Enerji İthalatı"}
+            <span className="text-xs font-medium text-slate-400">
+              {modernSubMode === "live" ? "Anlık kVA Üretim/Yük" : "En Yüksek Güç (Peak)"}
+            </span>
+            <span className={`p-1 px-1.5 text-[10px] font-mono rounded ${
+              modernSubMode === "live" 
+                ? "bg-amber-500/10 text-amber-400 border border-amber-500/25" 
+                : "bg-indigo-505/10 text-indigo-400 border border-indigo-500/25"
+            }`}>
+              {modernSubMode === "live" ? "Anlık Gözlem" : "Pik Değer"}
             </span>
           </div>
           <div className="mt-2.5">
-            <div className={`text-3xl font-extrabold tracking-tight font-mono ${stats.totalNet < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {stats.totalNet ? stats.totalNet.toLocaleString("tr-TR") : "0"} <span className="text-sm font-semibold">kWh</span>
+            <div className="text-3xl font-extrabold tracking-tight text-amber-400 font-mono">
+              {modernSubMode === "live" 
+                ? `${stats.totalKva.toLocaleString("tr-TR")} kVA`
+                : `${legacyLoading ? "..." : (legacyData ? legacyData.toplamKva.toLocaleString("tr-TR") : "0")} kVA`
+              }
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
-              <Info className="h-3 w-3" />
-              Del - Rec farkı (eksi değer kazançtır)
+              <Zap className="h-3 w-3 text-amber-400" />
+              {modernSubMode === "live" ? "Sistem anlık deşarj/güç üretimi" : "Seçili tarihteki en yüksek kVA güç akışı"}
             </div>
           </div>
         </div>
 
-        {/* STAT 5: STATION PERFORMANCE */}
-        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-indigo-500/40 transition duration-300">
+        {/* STAT 2: TOTAL DELIVERED GRID OR DAILY NET PRODUCTION */}
+        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-blue-500/40 transition duration-300">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-medium text-slate-400">Çevrimiçi Tesis / Port</span>
-            <span className="p-1 px-1.5 text-[10px] font-mono rounded bg-purple-500/10 text-purple-400 border border-purple-500/25">İletişim</span>
+            <span className="text-xs font-medium text-slate-400">
+              {modernSubMode === "live" ? "Sistem Şebeke Çekimi (Del)" : "Günlük Üretim (Net)"}
+            </span>
+            <span className={`p-1 px-1.5 text-[10px] font-mono rounded ${
+              modernSubMode === "live" 
+                ? "bg-blue-500/10 text-blue-400 border border-blue-500/25" 
+                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+            }`}>
+              {modernSubMode === "live" ? "Aktif Tüketim" : "Net Kazanç"}
+            </span>
           </div>
           <div className="mt-2.5">
-            <div className="text-3xl font-extrabold tracking-tight text-white font-mono">
-              {stats.activeFacilities} <span className="text-slate-500 text-lg">/</span> {stats.totalFacilities}
+            <div className={`text-3xl font-extrabold tracking-tight font-mono ${
+              modernSubMode === "live" ? "text-blue-400" : "text-emerald-400"
+            }`}>
+              {modernSubMode === "live" 
+                ? `${stats.totalDel ? stats.totalDel.toLocaleString("tr-TR") : "0"} kWh`
+                : `${legacyLoading ? "..." : (legacyData ? legacyData.gunlukUretim.toLocaleString("tr-TR") : "0")} kWh`
+              }
+            </div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
+              {modernSubMode === "live" ? (
+                <>
+                  <ArrowUpRight className="h-3 w-3 text-blue-400" />
+                  Şebekeden çekilen kümülatif enerji
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  Dün-bugün sonu katsayı ağırlıklı net
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* STAT 3: TOTAL SOLAR RECEIVED OR MONTHLY CUMULATIVE */}
+        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-emerald-500/40 transition duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-xs font-medium text-slate-400">
+              {modernSubMode === "live" ? "Sisteme Basılan (Rec)" : "Aylık Toplam Üretim"}
+            </span>
+            <span className={`p-1 px-1.5 text-[10px] font-mono rounded ${
+              modernSubMode === "live" 
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" 
+                : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/25"
+            }`}>
+              {modernSubMode === "live" ? "Aktif Üretim" : "Aylık Kümülatif"}
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className={`text-3xl font-extrabold tracking-tight font-mono ${
+              modernSubMode === "live" ? "text-emerald-400" : "text-indigo-400"
+            }`}>
+              {modernSubMode === "live" 
+                ? `${stats.totalRec ? stats.totalRec.toLocaleString("tr-TR") : "0"} kWh`
+                : `${legacyLoading ? "..." : (legacyData ? legacyData.aylikUretim.toLocaleString("tr-TR") : "0")} kWh`
+              }
+            </div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
+              {modernSubMode === "live" ? (
+                <>
+                  <ArrowDownRight className="h-3 w-3 text-emerald-400" />
+                  Şebekeye basılan kümülatif üretim
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="h-3 w-3 text-indigo-400" />
+                  Ay başından seçili güne kadar toplam
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* STAT 4: TOTAL COLECTIVE NET OR ESTIMATED GAIN */}
+        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-indigo-500/40 transition duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-xs font-medium text-slate-400">
+              {modernSubMode === "live" ? "Net Enerji Dengesi" : "Rapor Denge Durumu"}
+            </span>
+            <span className={`p-1 px-1.5 text-[10px] font-mono rounded ${
+              modernSubMode === "live" 
+                ? (stats.totalNet < 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20')
+                : (legacyData && legacyData.gunlukUretim < 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20')
+            }`}>
+              {modernSubMode === "live" 
+                ? (stats.totalNet < 0 ? "Enerji İhracatı" : "Enerji İthalatı")
+                : (legacyData && legacyData.gunlukUretim < 0 ? "Enerji İhracı (Kar)" : "Enerji İthali")
+              }
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className={`text-3xl font-extrabold tracking-tight font-mono ${
+              modernSubMode === "live" 
+                ? (stats.totalNet < 0 ? 'text-emerald-400' : 'text-rose-400')
+                : (legacyData && legacyData.gunlukUretim < 0 ? 'text-emerald-400' : 'text-rose-400')
+            }`}>
+              {modernSubMode === "live" 
+                ? `${stats.totalNet ? stats.totalNet.toLocaleString("tr-TR") : "0"} kWh`
+                : `${legacyLoading ? "..." : (legacyData ? legacyData.gunlukUretim.toLocaleString("tr-TR") : "0")} kWh`
+              }
+            </div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
+              <Info className="h-3 w-3" />
+              {modernSubMode === "live" 
+                ? "Del - Rec farkı (eksi değer kazançtır)" 
+                : "Seçili gündeki net tüketim dengesi"
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* STAT 5: STATION PERFORMANCE OR SELECTED DATE */}
+        <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between hover:border-indigo-500/40 transition duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-xs font-medium text-slate-400">
+              {modernSubMode === "live" ? "Çevrimiçi Tesis / Port" : "Raporlama Tarihi"}
+            </span>
+            <span className="p-1 px-1.5 text-[10px] font-mono rounded bg-purple-500/10 text-purple-400 border border-purple-500/25">
+              {modernSubMode === "live" ? "İletişim" : "Başarılı"}
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-extrabold tracking-tight text-white font-mono leading-none flex items-center h-8">
+              {modernSubMode === "live" 
+                ? `${stats.activeFacilities} / ${stats.totalFacilities}`
+                : `${legacyDate}`
+              }
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1.5">
               <Building2 className="h-3 w-3 text-slate-400" />
-              Aktif scrapper port erişimi
+              {modernSubMode === "live" ? "Aktif scrapper port erişimi" : `Tesis: ${legacyTesis}`}
             </div>
           </div>
         </div>
@@ -880,7 +1049,9 @@ export default function App() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-amber-500" />
-                <h2 className="text-base font-semibold text-white">Çoklu Tesis Karşılaştırmalı Zaman Serisi Grafik</h2>
+                <h2 className="text-base font-semibold text-white">
+                  {modernSubMode === "live" ? "Çoklu Tesis Karşılaştırmalı Zaman Serisi Grafik" : "Arşiv Analizi Raporlama Grafiği"}
+                </h2>
               </div>
               
               <div className="flex flex-wrap items-center gap-3">
@@ -892,7 +1063,7 @@ export default function App() {
                       chartMetric === "kva" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
-                    Anlık Güç (kVA)
+                    {modernSubMode === "live" ? "Anlık Güç (kVA)" : "Günlük kVA Seyri"}
                   </button>
                   <button
                     onClick={() => {
@@ -901,61 +1072,69 @@ export default function App() {
                       if (timeframeHours < 24) setTimeframeHours(24);
                     }}
                     className={`px-3 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                      chartMetric === "demand" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-slate-200"
+                      chartMetric !== "kva" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
-                    Toplam Tüketici (Del/Rec)
+                    {modernSubMode === "live" ? "Toplam Tüketici (Del/Rec)" : "Aylık Çubuk Rapor (Net bar)"}
                   </button>
-                  <button
-                    onClick={() => {
-                      setChartMetric("net");
-                      if (timeframeHours < 24) setTimeframeHours(24);
-                    }}
-                    className={`px-3 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                      chartMetric === "net" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Net Tüketim Dengesi
-                  </button>
-                </div>
-
-                {/* Duration Limit Selector */}
-                <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                  {chartMetric === "kva" && (
+                  {modernSubMode === "live" && (
                     <button
-                      onClick={() => setTimeframeHours(1)}
-                      className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                        timeframeHours === 1 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
+                      onClick={() => {
+                        setChartMetric("net");
+                        if (timeframeHours < 24) setTimeframeHours(24);
+                      }}
+                      className={`px-3 py-1 text-xs rounded transition duration-150 cursor-pointer ${
+                        chartMetric === "net" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      1 Saat
+                      Net Tüketim Dengesi
                     </button>
                   )}
-                  <button
-                    onClick={() => setTimeframeHours(24)}
-                    className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                      timeframeHours === 24 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
-                    }`}
-                  >
-                    24 Saat
-                  </button>
-                  <button
-                    onClick={() => setTimeframeHours(168)}
-                    className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                      timeframeHours === 168 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
-                    }`}
-                  >
-                    7 Gün
-                  </button>
-                  <button
-                    onClick={() => setTimeframeHours(720)}
-                    className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
-                      timeframeHours === 720 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
-                    }`}
-                  >
-                    30 Gün
-                  </button>
                 </div>
+
+                {/* Duration Limit Selector or Date indicator */}
+                {modernSubMode === "live" ? (
+                  <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    {chartMetric === "kva" && (
+                      <button
+                        onClick={() => setTimeframeHours(1)}
+                        className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
+                          timeframeHours === 1 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
+                        }`}
+                      >
+                        1 Saat
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setTimeframeHours(24)}
+                      className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
+                        timeframeHours === 24 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
+                      }`}
+                    >
+                      24 Saat
+                    </button>
+                    <button
+                      onClick={() => setTimeframeHours(168)}
+                      className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
+                        timeframeHours === 168 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
+                      }`}
+                    >
+                      7 Gün
+                    </button>
+                    <button
+                      onClick={() => setTimeframeHours(720)}
+                      className={`px-2.5 py-1 text-xs rounded transition duration-150 cursor-pointer ${
+                        timeframeHours === 720 ? "bg-slate-800 text-amber-400 font-medium" : "text-slate-400"
+                      }`}
+                    >
+                      30 Gün
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-indigo-950/40 text-indigo-400 text-xs px-3 py-1 rounded-lg border border-indigo-900/40 font-semibold font-mono">
+                    Aralık: {legacyDate} {legacyStart}-{legacyEnd}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -963,45 +1142,68 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-3 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
               <span className="text-xs text-slate-400 flex items-center gap-1 mr-2 font-medium">
                 <SlidersHorizontal className="h-3 w-3" />
-                Sinyal Filtresi:
+                {modernSubMode === "live" ? "Sinyal Filtresi (Göster/Gizle):" : "Saha Görünüm Statüsü:"}
               </span>
-              {facilities.map(f => (
+              {facilities.map(f => {
+                const isSelected = modernSubMode === "live" 
+                  ? selectedFacilities[f.id] 
+                  : (legacyTesis === "Hepsi" || legacyTesis === f.id);
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => {
+                      if (modernSubMode === "live") {
+                        toggleFacilitySelection(f.id);
+                      } else {
+                        setLegacyTesis(f.id);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs transition duration-150 border flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? "bg-slate-900 text-white font-semibold shadow-sm border-slate-700"
+                        : "bg-transparent text-slate-600 border-slate-950 opacity-40 hover:opacity-75"
+                    }`}
+                  >
+                    <span 
+                      className="inline-block w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: FACILITY_COLOR_MAP[f.id] }}
+                    ></span>
+                    {f.id}
+                  </button>
+                );
+              })}
+              {modernSubMode === "archive" && (
                 <button
-                  key={f.id}
-                  onClick={() => toggleFacilitySelection(f.id)}
-                  className={`px-2.5 py-1 rounded text-xs transition duration-150 border flex items-center gap-1.5 cursor-pointer ${
-                    selectedFacilities[f.id]
-                      ? "bg-slate-900 text-white font-medium shadow-sm border-slate-700"
-                      : "bg-transparent text-slate-500 border-slate-950 opacity-40 hover:opacity-75"
+                  onClick={() => setLegacyTesis("Hepsi")}
+                  className={`px-2.5 py-1 rounded text-xs transition duration-150 border cursor-pointer ${
+                    legacyTesis === "Hepsi"
+                      ? "bg-slate-900 text-amber-400 font-semibold border-slate-700"
+                      : "bg-transparent text-slate-600 border-slate-950 opacity-45"
                   }`}
                 >
-                  <span 
-                    className="inline-block w-2 h-2 rounded-full" 
-                    style={{ backgroundColor: FACILITY_COLOR_MAP[f.id] }}
-                  ></span>
-                  {f.id}
+                  Tümünü Göster
                 </button>
-              ))}
+              )}
             </div>
 
             {/* CHART VIEWPORTS */}
             <div className="h-[380px] w-full bg-slate-950/50 p-2 rounded-xl border border-slate-900/60 flex items-center justify-center">
-              {loading ? (
+              {loading || (modernSubMode === "archive" && legacyLoading) ? (
                 <div className="text-center flex flex-col items-center gap-3">
                   <RefreshCw className="h-8 w-8 text-amber-500 animate-spin" />
-                  <p className="text-xs text-slate-400">Geçmiş veriler yükleniyor...</p>
+                  <p className="text-xs text-slate-400">Veriler ve sistem arşivi yükleniyor...</p>
                 </div>
-              ) : (chartMetric === "kva" && processedKvaChartData.length === 0) || 
-                  (chartMetric !== "kva" && processedDemandChartData.length === 0) ? (
+              ) : (modernSubMode === "live" && ((chartMetric === "kva" && processedKvaChartData.length === 0) || (chartMetric !== "kva" && processedDemandChartData.length === 0))) || 
+                  (modernSubMode === "archive" && (!legacyData || (chartMetric === "kva" && legacyData.kvaChartData.length === 0) || (chartMetric !== "kva" && legacyData.monthlyBarData.length === 0))) ? (
                 <div className="text-center p-6 text-slate-500 text-xs flex flex-col items-center gap-2">
                   <AlertTriangle className="h-6 w-6 text-slate-600" />
-                  Mevcut filtrelerle eşleşen geçmiş telemetri verisi bulunamadı.
+                  Seçili tarihte ve tesis filtrelerinde geçmiş telemetri kaydı bulunamadı.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   {chartMetric === "kva" ? (
                     <LineChart 
-                      data={processedKvaChartData}
+                      data={modernSubMode === "live" ? processedKvaChartData : (legacyData?.kvaChartData || [])}
                       margin={{ top: 15, right: 25, left: -10, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" vertical={false} />
@@ -1028,8 +1230,11 @@ export default function App() {
                         iconSize={7} 
                         wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} 
                       />
-                      {facilities.map(f => (
-                        selectedFacilities[f.id] && (
+                      {facilities.map(f => {
+                        const isVisible = modernSubMode === "live" 
+                          ? selectedFacilities[f.id] 
+                          : (legacyTesis === "Hepsi" || legacyTesis === f.id);
+                        return isVisible && (
                           <Line
                             key={f.id}
                             type="monotone"
@@ -1040,9 +1245,29 @@ export default function App() {
                             dot={false}
                             activeDot={{ r: 4, strokeWidth: 0 }}
                           />
-                        )
-                      ))}
+                        );
+                      })}
                     </LineChart>
+                  ) : modernSubMode === "archive" ? (
+                    <BarChart 
+                      data={legacyData?.monthlyBarData || []}
+                      margin={{ top: 15, right: 25, left: -15, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" vertical={false} />
+                      <XAxis dataKey="day" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} unit=" kWh" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#020617", borderColor: "#1e293b", borderRadius: "8px", fontSize: "11px" }}
+                        labelClassName="text-slate-400 font-semibold mb-1"
+                        formatter={(value: any) => [`${value.toLocaleString("tr-TR")} kWh`, "Günlük Net Üretim"]}
+                      />
+                      <Bar 
+                        dataKey="netProduction" 
+                        name="Günlük Net Enerji Üretim Bilgisi" 
+                        fill="#10b981" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
                   ) : chartMetric === "net" ? (
                     <LineChart 
                       data={processedDemandChartData}
@@ -1085,7 +1310,6 @@ export default function App() {
                       />
                       <Legend iconType="rect" wrapperStyle={{ fontSize: "10px", paddingTop: "10px" }} />
                       
-                      {/* Plot Del as negative (or adjacent bars) and Rec as positive */}
                       {facilities.map(f => (
                         selectedFacilities[f.id] && (
                           <Bar 
