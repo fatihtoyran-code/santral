@@ -29,7 +29,7 @@ async function startServer() {
   restartScraperIntervals();
 
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Middleware for parsing JSON requests
   app.use(express.json());
@@ -422,7 +422,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Express custom full-stack backend running on port ${PORT}`);
-    writeLog("Sistem web sunucusu başarıyla başlatıldı ve 3000 portuna bağlandı.");
+    writeLog(`Sistem web sunucusu başarıyla başlatıldı ve ${PORT} portuna bağlandı.`);
   });
 }
 
