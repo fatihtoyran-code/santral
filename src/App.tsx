@@ -57,6 +57,24 @@ const FACILITY_COLOR_MAP: Record<string, string> = {
 };
 
 export default function App() {
+  // Local system timezone helpers
+  const getLocalSystemDateString = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getLocalSystemTimestampString = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   // Application state
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [stats, setStats] = useState<DashboardStats>({ totalKva: 0, totalNetDaily: 0, activeFacilities: 0, totalFacilities: 7 });
@@ -96,7 +114,7 @@ export default function App() {
   const [showGuide, setShowGuide] = useState<boolean>(true);
 
   // Legacy Dash States
-  const [legacyDate, setLegacyDate] = useState<string>(new Date().toISOString().substring(0, 10));
+  const [legacyDate, setLegacyDate] = useState<string>(getLocalSystemDateString());
   const [legacyStart, setLegacyStart] = useState<string>("06:00");
   const [legacyEnd, setLegacyEnd] = useState<string>("20:50");
   const [legacyTesis, setLegacyTesis] = useState<string>("Hepsi");
@@ -130,7 +148,7 @@ export default function App() {
     
     setLegacyStart(startHHMM);
     setLegacyEnd(nowHHMM);
-    setLegacyDate(now.toISOString().substring(0, 10));
+    setLegacyDate(getLocalSystemDateString(now));
   };
 
   const zamanOpsiyon = useMemo(() => {
@@ -1562,7 +1580,7 @@ export default function App() {
                     // For speed, mock local insertion in list, can also call api logs if we expose posting
                     const entry: SystemLog = {
                       id: Math.random().toString(),
-                      timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
+                      timestamp: getLocalSystemTimestampString(),
                       message: customLog,
                       type: "info",
                     };
@@ -1577,7 +1595,7 @@ export default function App() {
                   if (customLog.trim()) {
                     const entry: SystemLog = {
                       id: Math.random().toString(),
-                      timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
+                      timestamp: getLocalSystemTimestampString(),
                       message: customLog,
                       type: "info",
                     };

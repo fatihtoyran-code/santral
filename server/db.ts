@@ -39,6 +39,23 @@ let db: DatabaseSchema = {
 let sqliteDb: sqlite3.Database | null = null;
 let detectedDateFormat: "ISO" | "TR" | "OTHER" = "ISO";
 
+export function getSystemLocalTimestamp(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+export function getSystemLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function convertToDbFormat(isoTimestamp: string): string {
   if (detectedDateFormat === "TR") {
     if (isoTimestamp.includes(" ")) {
@@ -344,7 +361,7 @@ export function getAllDemandRecordsForRange(startStr: string, endStr: string): P
 
 // Log logger compatible with python's log.txt write behavior
 export function writeLog(message: string, type: "info" | "success" | "warning" | "error" = "info", tesis?: string) {
-  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+  const timestamp = getSystemLocalTimestamp();
   const logMsg = `[${timestamp}] ${tesis ? `[${tesis}] ` : ""}${message}`;
   
   // 1. Append to log.txt
@@ -484,13 +501,13 @@ function generateSeedHistory() {
   
   for (let d = 7; d >= 0; d--) {
     const dayDate = new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
-    const dateStr = dayDate.toISOString().substring(0, 10); // YYYY-MM-DD
+    const dateStr = getSystemLocalDateString(dayDate); // YYYY-MM-DD
 
     // kVA entries every 1 hour for background chart efficiency (makes visual beautiful without choking Recharts)
     for (let h = 0; h < 24; h++) {
       const recordDate = new Date(dayDate);
       recordDate.setHours(h, 0, 0, 0);
-      const timestamp = recordDate.toISOString().replace("T", " ").substring(0, 19);
+      const timestamp = getSystemLocalTimestamp(recordDate);
 
       // Don't generate future seeds
       if (recordDate.getTime() > now.getTime()) continue;
@@ -588,7 +605,7 @@ export function getDbState(): DatabaseSchema {
 }
 
 export function saveKva(tesis: string, kvaTotal: number, source: string = "Scraper") {
-  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+  const timestamp = getSystemLocalTimestamp();
   
   // 1. Insert into SQLite if available
   if (sqliteDb) {
@@ -637,7 +654,7 @@ export function saveKva(tesis: string, kvaTotal: number, source: string = "Scrap
 }
 
 export function saveDelRec(tesis: string, del: number, rec: number, net: number, source: string = "Scraper") {
-  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+  const timestamp = getSystemLocalTimestamp();
 
   // 1. Insert into SQLite if available
   if (sqliteDb) {
