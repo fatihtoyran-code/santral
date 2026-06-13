@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import http from "http";
 import { createServer as createViteServer } from "vite";
 import { 
   loadDb, 
@@ -30,6 +31,7 @@ async function startServer() {
 
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const httpServer = http.createServer(app);
 
   // Middleware for parsing JSON requests
   app.use(express.json());
@@ -408,7 +410,10 @@ async function startServer() {
   // Handle asset serving
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: { server: httpServer }
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -420,7 +425,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Express custom full-stack backend running on port ${PORT}`);
     writeLog(`Sistem web sunucusu başarıyla başlatıldı ve ${PORT} portuna bağlandı.`);
   });
