@@ -84,6 +84,18 @@ export async function scrapeFacilityKva(facilityId: string, isReal: boolean) {
   if (!facility) return;
 
   if (isReal) {
+    if (facilityId === "G500") {
+      // G500 does not connect to any port. It directly reads G499's data.
+      const g499 = dbState.facilities["G499"];
+      const kva = g499 && g499.lastKva !== null ? g499.lastKva : null;
+      if (kva !== null) {
+        saveKva("G500", kva, "G499 Klonu (Bypass)");
+      } else {
+        updateFacilityFail("G500", "kva", "G499 kVA verisi henüz alınamadığı için bekleniyor.");
+      }
+      return;
+    }
+
     try {
       const url = `${facility.url}/Operation.html`;
       const htmlOutput = await fetchWithTimeout(url);
@@ -91,6 +103,10 @@ export async function scrapeFacilityKva(facilityId: string, isReal: boolean) {
       
       if (kva !== null) {
         saveKva(facilityId, kva, "Gerçek IP");
+        // Also clone to G500 immediately to keep them fully synced without making port connections for G500
+        if (facilityId === "G499") {
+          saveKva("G500", kva, "G499 Klonu (Bypass)");
+        }
       } else {
         updateFacilityFail(facilityId, "kva", "kVA Total degeri sayfa içinde bulunamadı.");
       }
@@ -139,6 +155,20 @@ export async function scrapeFacilityDemand(facilityId: string, isReal: boolean) 
   if (!facility) return;
 
   if (isReal) {
+    if (facilityId === "G500") {
+      // G500 does not connect to any port. It directly reads G499's data.
+      const g499 = dbState.facilities["G499"];
+      const del = g499 && g499.lastDel !== null ? g499.lastDel : null;
+      const rec = g499 && g499.lastRec !== null ? g499.lastRec : null;
+      if (del !== null && rec !== null) {
+        const net = parseFloat((del - rec).toFixed(1));
+        saveDelRec("G500", del, rec, net, "G499 Klonu (Bypass)");
+      } else {
+        updateFacilityFail("G500", "demand", "G499 tüketim verisi henüz alınamadığı için bekleniyor.");
+      }
+      return;
+    }
+
     try {
       const url = `${facility.url}/Consumption.html`;
       const htmlOutput = await fetchWithTimeout(url);
@@ -147,6 +177,10 @@ export async function scrapeFacilityDemand(facilityId: string, isReal: boolean) 
       if (del !== null && rec !== null) {
         const net = parseFloat((del - rec).toFixed(1));
         saveDelRec(facilityId, del, rec, net, "Gerçek IP");
+        // Also clone to G500 immediately to keep them fully synced without making port connections for G500
+        if (facilityId === "G499") {
+          saveDelRec("G500", del, rec, net, "G499 Klonu (Bypass)");
+        }
       } else {
         updateFacilityFail(facilityId, "demand", "Consumption tablosunda Del/Rec verileri bulunamadı.");
       }
