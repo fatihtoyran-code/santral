@@ -17,13 +17,13 @@ export interface DatabaseSchema {
 }
 
 const DEFAULT_FACILITIES: Record<string, Facility> = {
-  "K499": { id: "K499", name: "K499 Karaağaç Güneş", url: "http://78.189.129.179:40083", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "K500": { id: "K500", name: "K500 Kovancılar Sol", url: "http://78.189.129.179:40082", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "G500": { id: "G500", name: "G500 Gökdere Santral", url: "http://78.189.129.179:40081", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "G499": { id: "G499", name: "G499 Gümüşsu Enerji", url: "http://78.189.129.179:40084", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "M499": { id: "M499", name: "M499 Malatya Trafo", url: "http://5.26.254.49:40080", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "M500": { id: "M500", name: "M500 Meram Dağıtım", url: "http://78.189.129.179:40080", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
-  "T500": { id: "T500", name: "T500 Turges Dinamik", url: "http://78.189.129.179:40085", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "K499": { id: "K499", name: "K499", url: "http://78.189.129.179:40083", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "K500": { id: "K500", name: "K500", url: "http://78.189.129.179:40082", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "G500": { id: "G500", name: "G500", url: "http://78.189.129.179:40081", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "G499": { id: "G499", name: "G499", url: "http://78.189.129.179:40084", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "M499": { id: "M499", name: "M499", url: "http://5.26.254.49:40080", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "M500": { id: "M500", name: "M500", url: "http://78.189.129.179:40080", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
+  "T500": { id: "T500", name: "T500", url: "http://78.189.129.179:40085", status: "idle", lastKva: null, lastDel: null, lastRec: null, lastNet: null, lastUpdatedKva: null, lastUpdatedDemand: null },
 };
 
 let db: DatabaseSchema = {
@@ -394,6 +394,12 @@ export function loadDb() {
       const parsed = JSON.parse(fileContent);
       if (parsed.facilities) {
         db.facilities = parsed.facilities;
+        // Simplify the facility names to contain only their IDs
+        Object.keys(db.facilities).forEach(key => {
+          if (db.facilities[key]) {
+            db.facilities[key].name = key;
+          }
+        });
         db.scraperMode = parsed.scraperMode || "simulation";
         db.scraperIntervalKva = parsed.scraperIntervalKva || 300;
         db.logs = parsed.logs || [];
