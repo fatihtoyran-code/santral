@@ -149,18 +149,26 @@ export function initSqlite(): boolean {
 export function getKvaDataFiltered(date: string, start: string, end: string, facility: string): Promise<KvaRecord[]> {
   const startStr = `${date} ${start}:00`;
   const endStr = `${date} ${end}:59`;
-  
-  const dbStart = convertToDbFormat(startStr);
-  const dbEnd = convertToDbFormat(endStr);
 
   if (sqliteDb) {
     return new Promise((resolve) => {
       let query = `
-        SELECT timestamp, tesis, kva_total 
-        FROM kva_data 
-        WHERE timestamp BETWEEN ? AND ? AND tesis != 'YP'
+        WITH normalized_kva AS (
+          SELECT 
+            timestamp, tesis, kva_total,
+            CASE 
+              WHEN instr(timestamp, '.') > 0 THEN 
+                substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+              ELSE 
+                timestamp 
+            END as iso_ts
+          FROM kva_data 
+        )
+        SELECT timestamp, tesis, kva_total, iso_ts
+        FROM normalized_kva 
+        WHERE iso_ts BETWEEN ? AND ? AND tesis != 'YP'
       `;
-      const params: any[] = [dbStart, dbEnd];
+      const params: any[] = [startStr, endStr];
       if (facility !== "Hepsi") {
         query += " AND tesis = ?";
         params.push(facility);
@@ -172,7 +180,7 @@ export function getKvaDataFiltered(date: string, start: string, end: string, fac
         } else {
           const normalized = (rows || []).map(r => ({
             ...r,
-            timestamp: convertToIsoFormat(r.timestamp)
+            timestamp: r.iso_ts
           }));
           resolve(normalized);
         }
@@ -190,22 +198,32 @@ export function getKvaDataFiltered(date: string, start: string, end: string, fac
 }
 
 export function getLatestDemandBefore(timestamp: string, tesisId: string): Promise<DemandRecord | null> {
-  const dbTimestamp = convertToDbFormat(timestamp);
   if (sqliteDb) {
     return new Promise((resolve) => {
       const query = `
-        SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh 
-        FROM demand_data 
-        WHERE timestamp <= ? AND tesis = ?
-        ORDER BY timestamp DESC LIMIT 1
+        WITH normalized_demand AS (
+          SELECT 
+            timestamp, tesis, del_kwh, rec_kwh, net_kwh,
+            CASE 
+              WHEN instr(timestamp, '.') > 0 THEN 
+                substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+              ELSE 
+                timestamp 
+            END as iso_ts
+          FROM demand_data
+        )
+        SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh, iso_ts 
+        FROM normalized_demand 
+        WHERE iso_ts <= ? AND tesis = ?
+        ORDER BY iso_ts DESC LIMIT 1
       `;
-      sqliteDb!.get(query, [dbTimestamp, tesisId], (err, row: any) => {
+      sqliteDb!.get(query, [timestamp, tesisId], (err, row: any) => {
         if (err || !row) {
           resolve(null);
         } else {
           resolve({
             ...row,
-            timestamp: convertToIsoFormat(row.timestamp)
+            timestamp: row.iso_ts
           } as DemandRecord);
         }
       });
@@ -219,27 +237,51 @@ export function getLatestDemandBefore(timestamp: string, tesisId: string): Promi
 }
 
 export function getMonthRangeDemand(startOfMonthStr: string, endOfMonthStr: string, tesisId: string): Promise<{ first: DemandRecord | null, last: DemandRecord | null }> {
-  const dbStart = convertToDbFormat(startOfMonthStr);
-  const dbEnd = convertToDbFormat(endOfMonthStr);
   if (sqliteDb) {
     return new Promise((resolve) => {
       const queryMinMax = `
-        SELECT MIN(timestamp) as minTs, MAX(timestamp) as maxTs
-        FROM demand_data
-        WHERE timestamp BETWEEN ? AND ? AND tesis = ?
+        WITH normalized_demand AS (
+          SELECT 
+            timestamp, tesis, del_kwh, rec_kwh, net_kwh,
+            CASE 
+              WHEN instr(timestamp, '.') > 0 THEN 
+                substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+              ELSE 
+                timestamp 
+            END as iso_ts
+          FROM demand_data
+        )
+        SELECT MIN(iso_ts) as minTs, MAX(iso_ts) as maxTs
+        FROM normalized_demand
+        WHERE iso_ts BETWEEN ? AND ? AND tesis = ?
       `;
-      sqliteDb!.get(queryMinMax, [dbStart, dbEnd, tesisId], (err, row: any) => {
+      sqliteDb!.get(queryMinMax, [startOfMonthStr, endOfMonthStr, tesisId], (err, row: any) => {
         if (err || !row || !row.minTs || !row.maxTs) {
           resolve({ first: null, last: null });
         } else {
           const minTs = row.minTs;
           const maxTs = row.maxTs;
           
-          sqliteDb!.get(`SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh FROM demand_data WHERE timestamp = ? AND tesis = ?`, [minTs, tesisId], (err1, rowFirst: any) => {
-            sqliteDb!.get(`SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh FROM demand_data WHERE timestamp = ? AND tesis = ?`, [maxTs, tesisId], (err2, rowLast: any) => {
+          const queryGetRow = `
+            WITH normalized_demand AS (
+              SELECT 
+                timestamp, tesis, del_kwh, rec_kwh, net_kwh,
+                CASE 
+                  WHEN instr(timestamp, '.') > 0 THEN 
+                    substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+                  ELSE 
+                    timestamp 
+                END as iso_ts
+              FROM demand_data
+            )
+            SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh, iso_ts FROM normalized_demand WHERE iso_ts = ? AND tesis = ?
+          `;
+          
+          sqliteDb!.get(queryGetRow, [minTs, tesisId], (err1, rowFirst: any) => {
+            sqliteDb!.get(queryGetRow, [maxTs, tesisId], (err2, rowLast: any) => {
               resolve({
-                first: rowFirst ? { ...rowFirst, timestamp: convertToIsoFormat(rowFirst.timestamp) } : null,
-                last: rowLast ? { ...rowLast, timestamp: convertToIsoFormat(rowLast.timestamp) } : null
+                first: rowFirst ? { ...rowFirst, timestamp: rowFirst.iso_ts } : null,
+                last: rowLast ? { ...rowLast, timestamp: rowLast.iso_ts } : null
               });
             });
           });
@@ -261,23 +303,32 @@ export function getMonthRangeDemand(startOfMonthStr: string, endOfMonthStr: stri
 }
 
 export function getAllDemandRecordsForRange(startStr: string, endStr: string): Promise<DemandRecord[]> {
-  const dbStart = convertToDbFormat(startStr);
-  const dbEnd = convertToDbFormat(endStr);
   if (sqliteDb) {
     return new Promise((resolve) => {
       const query = `
-        SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh 
-        FROM demand_data 
-        WHERE timestamp BETWEEN ? AND ?
-        ORDER BY timestamp ASC
+        WITH normalized_demand AS (
+          SELECT 
+            timestamp, tesis, del_kwh, rec_kwh, net_kwh,
+            CASE 
+              WHEN instr(timestamp, '.') > 0 THEN 
+                substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+              ELSE 
+                timestamp 
+            END as iso_ts
+          FROM demand_data
+        )
+        SELECT timestamp, tesis, del_kwh, rec_kwh, net_kwh, iso_ts 
+        FROM normalized_demand 
+        WHERE iso_ts BETWEEN ? AND ?
+        ORDER BY iso_ts ASC
       `;
-      sqliteDb!.all(query, [dbStart, dbEnd], (err, rows: any[]) => {
+      sqliteDb!.all(query, [startStr, endStr], (err, rows: any[]) => {
         if (err || !rows) {
           resolve([]);
         } else {
           const mapped = rows.map(r => ({
             ...r,
-            timestamp: convertToIsoFormat(r.timestamp)
+            timestamp: r.iso_ts
           }));
           resolve(mapped);
         }
@@ -362,19 +413,45 @@ export function loadDb() {
         writeLog(`SQLite tespit edildi ve yüklendi. ${row.count} kVA kaydı bulundu. Sisteminiz çalışmaya hazır!`, "success");
         // Load latest state into memory facility nodes
         Object.keys(db.facilities).forEach(tId => {
-          sqliteDb?.get("SELECT kva_total, timestamp FROM kva_data WHERE tesis = ? ORDER BY timestamp DESC LIMIT 1", [tId], (errKva, rowKva: any) => {
+          sqliteDb?.get(`
+            WITH normalized_kva AS (
+              SELECT 
+                timestamp, tesis, kva_total,
+                CASE 
+                  WHEN instr(timestamp, '.') > 0 THEN 
+                    substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+                  ELSE 
+                    timestamp 
+                END as iso_ts
+              FROM kva_data
+            )
+            SELECT kva_total, timestamp, iso_ts FROM normalized_kva WHERE tesis = ? ORDER BY iso_ts DESC LIMIT 1
+          `, [tId], (errKva, rowKva: any) => {
             if (rowKva) {
               db.facilities[tId].lastKva = rowKva.kva_total;
-              db.facilities[tId].lastUpdatedKva = rowKva.timestamp;
+              db.facilities[tId].lastUpdatedKva = rowKva.iso_ts;
               db.facilities[tId].status = rowKva.kva_total > 0 ? "online" : "idle";
             }
           });
-          sqliteDb?.get("SELECT del_kwh, rec_kwh, net_kwh, timestamp FROM demand_data WHERE tesis = ? ORDER BY timestamp DESC LIMIT 1", [tId], (errDem, rowDem: any) => {
+          sqliteDb?.get(`
+            WITH normalized_demand AS (
+              SELECT 
+                timestamp, tesis, del_kwh, rec_kwh, net_kwh,
+                CASE 
+                  WHEN instr(timestamp, '.') > 0 THEN 
+                    substr(timestamp, 7, 4) || '-' || substr(timestamp, 4, 2) || '-' || substr(timestamp, 1, 2) || ' ' || substr(timestamp, 12)
+                  ELSE 
+                    timestamp 
+                END as iso_ts
+              FROM demand_data
+            )
+            SELECT del_kwh, rec_kwh, net_kwh, timestamp, iso_ts FROM normalized_demand WHERE tesis = ? ORDER BY iso_ts DESC LIMIT 1
+          `, [tId], (errDem, rowDem: any) => {
             if (rowDem) {
               db.facilities[tId].lastDel = rowDem.del_kwh;
               db.facilities[tId].lastRec = rowDem.rec_kwh;
               db.facilities[tId].lastNet = rowDem.net_kwh;
-              db.facilities[tId].lastUpdatedDemand = rowDem.timestamp;
+              db.facilities[tId].lastUpdatedDemand = rowDem.iso_ts;
             }
           });
         });
