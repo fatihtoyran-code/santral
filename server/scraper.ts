@@ -8,16 +8,19 @@ function parseKvaTotal(html: string): number | null {
     if (index === -1) return null;
 
     const subHtml = html.substring(index);
-    // Grab TD matches inside the close proximity
+    // Grab TD matches inside close proximity
     const tdMatches = [...subHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
-    if (tdMatches.length < 2) return null; // First is the title label, second is the value column
-
-    // Extract text inside second matching column, clean HTML tags
-    const valString = tdMatches[1][1].replace(/<[^>]*>/g, "").trim();
-    const cleanVal = valString.split(/\s+/)[0].replace(",", ".");
-    const num = parseFloat(cleanVal);
     
-    return isNaN(num) ? null : num;
+    // Check first 3 cell matches immediately following the text "kva total"
+    for (let i = 0; i < Math.min(3, tdMatches.length); i++) {
+      const cellContent = tdMatches[i][1].replace(/<[^>]*>/g, "").trim();
+      const cleanVal = cellContent.split(/\s+/)[0].replace(",", ".");
+      const num = parseFloat(cleanVal);
+      if (!isNaN(num)) {
+        return num;
+      }
+    }
+    return null;
   } catch (err) {
     return null;
   }
